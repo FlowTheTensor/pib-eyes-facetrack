@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>eyes_face_follow</name>
+  <version>0.0.1</version>
+  <description>Face tracking and pygame eyes driven by a camera service.</description>
+  <maintainer email="todo@example.com">todo</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>datatypes</exec_depend>
+</package>

@@ -1,0 +1,12 @@
+services:
+  eyes-face-follow:
+    build: .
+    network_mode: host
+    devices:
+      - /dev/dri
+    environment:
+      - XDG_RUNTIME_DIR
+      - WAYLAND_DISPLAY
+      - SDL_VIDEODRIVER=wayland
+    volumes:
+      - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}
