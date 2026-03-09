@@ -215,6 +215,7 @@ class EyesRenderer:
         bg = cv2.resize(bg, (self.width, self.height))
         bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
         bg = np.flipud(bg)
+        bg = np.fliplr(bg)
         self.background_frame = bg
 
     def _draw_background(self):
