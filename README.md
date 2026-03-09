@@ -18,10 +18,13 @@ cd ~/pib-eyes-facetrack
 2) Vorbereitung abgeschlossen (der Kamera-Container wird spaeter durch docker compose gebaut)
 
 ## Start (Wayland, Vollbild)
-Empfohlen (stoppt den alten `ros-camera` automatisch und startet alles):
+Startet den neuen Kamera-Container `ros-camera-eyes-facetrack`:
 ```bash
 bash run-wayland.sh
 ```
+
+Wichtig: Die OAK-D Lite kann nicht von zwei Containern gleichzeitig genutzt werden.
+Stoppe den alten Kamera-Container, bevor du den neuen nutzt.
 
 Nach dem Start kannst du den Kamera-Container pruefen:
 ```bash
@@ -29,10 +32,9 @@ ros2 node list
 ros2 node info /camera_node
 ```
 
-Alternativ (manuell):
+Wenn du den alten Kamera-Container nutzen willst, stoppe den neuen manuell:
 ```bash
-docker stop ros-camera
-XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 docker compose up --build
+docker stop ros-camera-eyes-facetrack
 ```
 
 ## Bedienung

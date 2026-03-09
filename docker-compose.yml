@@ -21,7 +21,7 @@ services:
       - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}
 
   camera:
-    container_name: multirepo-ros-camera-1
+    container_name: ros-camera-eyes-facetrack
     build:
       context: .
       dockerfile: Dockerfile.camera
