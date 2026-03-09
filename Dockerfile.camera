@@ -1,15 +1,10 @@
-FROM arm64v8/ros:humble-ros-base
+FROM luxonis/depthai-ros:humble-arm64-latest
 
 SHELL ["/bin/bash", "-c"]
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    python3-pip \
-    python3-opencv \
-    libusb-1.0-0 \
-    udev \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3-pip
 
 RUN pip install depthai==2.25.1.0 blobconverter==1.4.3
 
