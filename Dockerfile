@@ -9,6 +9,9 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-numpy \
     python3-colcon-common-extensions \
     ros-humble-rosidl-default-generators \
+    libegl1-mesa \
+    libgl1-mesa-dri \
+    libgl1-mesa-glx \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install PyOpenGL

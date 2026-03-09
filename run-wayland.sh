@@ -14,5 +14,6 @@ docker run --rm -it \
   -e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \
   -e WAYLAND_DISPLAY=${WAYLAND_DISPLAY} \
   -e SDL_VIDEODRIVER=wayland \
+  -e PYOPENGL_PLATFORM=egl \
   -v ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR} \
   ${IMAGE_NAME}
