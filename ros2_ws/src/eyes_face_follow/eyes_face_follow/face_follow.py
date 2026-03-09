@@ -44,12 +44,25 @@ import rclpy
 from rclpy.node import Node
 
 from datatypes.srv import GetCameraImage
+from vision_msgs.msg import FaceCoordinates
 
 
 class CameraClient(Node):
     def __init__(self, service_name):
         super().__init__("eyes_face_follow")
         self._client = self.create_client(GetCameraImage, service_name)
+        self._last_face = None
+        self._last_face_time = 0.0
+        self.create_subscription(
+            FaceCoordinates,
+            "face_coordinates",
+            self._face_callback,
+            10,
+        )
+
+    def _face_callback(self, msg):
+        self._last_face = (msg.x, msg.y, msg.confidence)
+        self._last_face_time = time.time()
 
     def wait_for_service(self, timeout_sec=2.0):
         return self._client.wait_for_service(timeout_sec=timeout_sec)
@@ -64,6 +77,13 @@ class CameraClient(Node):
         if result is None:
             return None
         return result.image_base64
+
+    def get_face_coordinates(self, max_age=0.3):
+        if self._last_face is None:
+            return None
+        if time.time() - self._last_face_time > max_age:
+            return None
+        return self._last_face
 
 
 class EyesRenderer:
@@ -283,6 +303,7 @@ def main():
     show_debug = False
     last_frame = None
     last_faces = []
+    use_face_topic = os.getenv("USE_FACE_TOPIC", "1") == "1"
 
     running = True
     while running:
@@ -308,7 +329,17 @@ def main():
                 show_debug = not show_debug
 
         now = time.time()
-        if now - last_request > 0.03:
+        face_coords = node.get_face_coordinates()
+        if use_face_topic and face_coords is not None:
+            gx, gy, _conf = face_coords
+            if abs(gx) < deadzone:
+                gx = 0.0
+            if abs(gy) < deadzone:
+                gy = 0.0
+            target_gx = max(-1.0, min(1.0, gx)) * gaze_scale_x
+            target_gy = max(-0.6, min(0.6, gy)) * gaze_scale_y
+
+        if now - last_request > 0.03 and (show_debug or not use_face_topic):
             last_request = now
             image_base64 = node.fetch_image_base64(timeout_sec=1.0)
             if image_base64:
@@ -317,7 +348,7 @@ def main():
                     last_frame = frame
                     face, faces = find_face_center(frame, cascade)
                     last_faces = faces
-                    if face:
+                    if face and (not use_face_topic or face_coords is None):
                         cx, cy, w, h = face
                         if face_cx is None:
                             face_cx = cx
@@ -333,7 +364,7 @@ def main():
                             gy = 0.0
                         target_gx = max(-1.0, min(1.0, gx)) * gaze_scale_x
                         target_gy = max(-0.6, min(0.6, gy)) * gaze_scale_y
-                    else:
+                    elif not use_face_topic:
                         target_gx *= 0.9
                         target_gy *= 0.9
 

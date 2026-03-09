@@ -15,5 +15,18 @@ services:
       - PYOPENGL_PLATFORM=egl
       - HOME=/tmp
       - ROS_LOG_DIR=/tmp/ros/log
+      - USE_FACE_TOPIC=1
     volumes:
       - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}
+
+  camera:
+    container_name: ros-camera
+    build:
+      context: .
+      dockerfile: Dockerfile.camera
+    network_mode: host
+    devices:
+      - /dev/bus/usb
+    environment:
+      - OAKD_FACE_ENABLED=1
+      - OAKD_FACE_CONFIDENCE=0.6
