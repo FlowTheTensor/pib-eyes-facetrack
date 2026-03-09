@@ -101,11 +101,19 @@ class EyesRenderer:
         self.blink_duration = 0.25
         self.background_enabled = False
         self.background_frame = None
+        self.text_enabled = True
+        self.text_font_size = 60
+        self.text_margin = 40
+        self.text = (
+            "Besuchen Sie unsere Technikerschule fuer Elektrotechnik Schwerpunkt "
+            "Kuenstliche Intelligenz im Raum 235 und 238"
+        )
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
 
         pygame.init()
+        pygame.font.init()
         display_flags = DOUBLEBUF | OPENGL
         if self.fullscreen:
             display_info = pygame.display.Info()
@@ -122,6 +130,7 @@ class EyesRenderer:
         glLightfv(GL_LIGHT0, GL_POSITION, light_pos)
         glClearColor(1.0, 1.0, 1.0, 1.0)
         self.quadric = gluNewQuadric()
+        self.text_surface = self._render_text_surface()
 
     def update_gaze(self, target_gx, target_gy, alpha=0.35):
         self.gx = (1.0 - alpha) * self.gx + alpha * target_gx
@@ -138,6 +147,8 @@ class EyesRenderer:
         glTranslatef(0.0, 0.0, -6.0)
         if self.background_enabled and self.background_frame is not None:
             self._draw_background()
+        if self.text_enabled:
+            self._draw_text()
         left_gx = self.gx + self._convergence_offset(-1.7)
         right_gx = self.gx + self._convergence_offset(1.7)
         self._draw_eye(-1.7, 0.7, left_gx, self.gy)
@@ -247,26 +258,51 @@ class EyesRenderer:
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_LIGHTING)
 
+    def _render_text_surface(self):
+        font = pygame.font.Font(None, self.text_font_size)
+        max_width = max(100, self.width - (self.text_margin * 2))
+        words = self.text.split()
+        lines = []
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if font.size(candidate)[0] <= max_width:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+
+        line_height = font.get_linesize()
+        text_h = line_height * len(lines)
+        surface = pygame.Surface((max_width, text_h))
+        surface.fill((255, 255, 255))
+        for i, line in enumerate(lines):
+            text_line = font.render(line, True, (0, 0, 0))
+            line_w = text_line.get_width()
+            x = int((max_width - line_w) / 2)
+            surface.blit(text_line, (x, i * line_height))
+        return surface
+
+    def _draw_text(self):
+        text_w, text_h = self.text_surface.get_size()
+        x = int((self.width - text_w) / 2)
+        y = 20
+        text_data = pygame.image.tostring(self.text_surface, "RGB", True)
+        glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+        glWindowPos2d(x, y)
+        glDrawPixels(text_w, text_h, GL_RGB, GL_UNSIGNED_BYTE, text_data)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+
 
 def decode_image(image_base64):
     raw = base64.b64decode(image_base64)
     data = np.frombuffer(raw, dtype=np.uint8)
     return cv2.imdecode(data, cv2.IMREAD_COLOR)
-
-
-def find_face_center(frame, cascade):
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=6,
-        minSize=(80, 80),
-    )
-    if len(faces) == 0:
-        return None, []
-    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-    cy = y + h * 0.35
-    return (x + w / 2.0, cy, frame.shape[1], frame.shape[0]), faces
 
 
 def main():
@@ -278,31 +314,17 @@ def main():
         return
 
     eyes = EyesRenderer(fullscreen=True)
-    cascade_path = None
-    if hasattr(cv2, "data"):
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-    else:
-        cascade_path = "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml"
-    cascade = cv2.CascadeClassifier(cascade_path)
-    if cascade.empty():
-        node.get_logger().error(f"Haar cascade not found: {cascade_path}")
-        rclpy.shutdown()
-        return
 
     clock = pygame.time.Clock()
     last_request = 0.0
     target_gx = 0.0
     target_gy = 0.0
-    face_cx = None
-    face_cy = None
-    face_alpha = 0.35
     deadzone = 0.05
     gaze_scale_x = 0.95
     gaze_scale_y = 0.55
     gaze_step = 0.05
     show_debug = False
     last_frame = None
-    last_faces = []
     use_face_topic = os.getenv("USE_FACE_TOPIC", "1") == "1"
 
     running = True
@@ -313,6 +335,8 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
+                elif event.key == pygame.K_t:
+                    eyes.text_enabled = not eyes.text_enabled
                 elif event.key == pygame.K_a:
                     eyes.adjust_convergence(-1)
                 elif event.key == pygame.K_s:
@@ -339,37 +363,16 @@ def main():
             target_gx = max(-1.0, min(1.0, gx)) * gaze_scale_x
             target_gy = max(-0.6, min(0.6, gy)) * gaze_scale_y
 
-        if now - last_request > 0.03 and (show_debug or not use_face_topic):
+        if now - last_request > 0.03 and show_debug:
             last_request = now
             image_base64 = node.fetch_image_base64(timeout_sec=1.0)
             if image_base64:
                 frame = decode_image(image_base64)
                 if frame is not None:
                     last_frame = frame
-                    face, faces = find_face_center(frame, cascade)
-                    last_faces = faces
-                    if face and (not use_face_topic or face_coords is None):
-                        cx, cy, w, h = face
-                        if face_cx is None:
-                            face_cx = cx
-                            face_cy = cy
-                        else:
-                            face_cx = (1.0 - face_alpha) * face_cx + face_alpha * cx
-                            face_cy = (1.0 - face_alpha) * face_cy + face_alpha * cy
-                        gx = -((face_cx / w - 0.5) * 2.0)
-                        gy = -((face_cy / h - 0.5) * 2.0)
-                        if abs(gx) < deadzone:
-                            gx = 0.0
-                        if abs(gy) < deadzone:
-                            gy = 0.0
-                        target_gx = max(-1.0, min(1.0, gx)) * gaze_scale_x
-                        target_gy = max(-0.6, min(0.6, gy)) * gaze_scale_y
-                    elif not use_face_topic:
-                        target_gx *= 0.9
-                        target_gy *= 0.9
 
         eyes.update_gaze(target_gx, target_gy)
-        eyes.set_background(last_frame, last_faces, enabled=show_debug)
+        eyes.set_background(last_frame, enabled=show_debug)
         eyes.on_draw()
         clock.tick(eyes.fps)
 
