@@ -208,7 +208,7 @@ class EyesRenderer:
             self.background_frame = None
             return
         bg = frame
-        if faces:
+        if faces is not None and len(faces) > 0:
             bg = frame.copy()
             for (x, y, w, h) in faces:
                 cv2.rectangle(bg, (x, y), (x + w, y + h), (0, 255, 0), 2)
