@@ -5,6 +5,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && apt-get install --no-install-recommends -y \
     python3-pip \
     python3-opencv \
+    opencv-data \
     python3-pygame \
     python3-numpy \
     python3-colcon-common-extensions \

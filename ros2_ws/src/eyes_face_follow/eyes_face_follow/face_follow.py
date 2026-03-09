@@ -173,6 +173,10 @@ def main():
     else:
         cascade_path = "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml"
     cascade = cv2.CascadeClassifier(cascade_path)
+    if cascade.empty():
+        node.get_logger().error(f"Haar cascade not found: {cascade_path}")
+        rclpy.shutdown()
+        return
 
     clock = pygame.time.Clock()
     last_request = 0.0

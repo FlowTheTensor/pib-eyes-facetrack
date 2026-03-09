@@ -13,6 +13,7 @@ docker run --rm -it \
   --group-add video \
   --network=host \
   --device=/dev/dri \
+  --device=/dev/dri/renderD128 \
   -e HOME=/tmp \
   -e ROS_LOG_DIR=/tmp/ros/log \
   -e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \

@@ -7,6 +7,7 @@ services:
       - video
     devices:
       - /dev/dri
+      - /dev/dri/renderD128
     environment:
       - XDG_RUNTIME_DIR
       - WAYLAND_DISPLAY
