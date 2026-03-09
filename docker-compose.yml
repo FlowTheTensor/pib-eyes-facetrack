@@ -1,6 +1,7 @@
 services:
   eyes-face-follow:
     build: .
+    restart: unless-stopped
     network_mode: host
     user: "${UID:-1000}:${GID:-1000}"
     group_add:
@@ -24,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.camera
+    restart: unless-stopped
     network_mode: host
     devices:
       - /dev/bus/usb

@@ -15,26 +15,24 @@ git clone <repo-url> ~/pib-eyes-facetrack
 cd ~/pib-eyes-facetrack
 ```
 
-2) Kamera-Container starten (wird ueber docker compose mitgebaut)
-- Test im Kamera-Container:
+2) Vorbereitung abgeschlossen (der Kamera-Container wird spaeter durch docker compose gebaut)
+
+## Start (Wayland, Vollbild)
+Empfohlen (stoppt den alten `ros-camera` automatisch und startet alles):
+```bash
+bash run-wayland.sh
+```
+
+Nach dem Start kannst du den Kamera-Container pruefen:
 ```bash
 ros2 node list
 ros2 node info /camera_node
 ```
 
-## Start (Wayland, Vollbild)
-Falls bereits ein alter `ros-camera` Container laeuft, stoppe ihn zuerst:
+Alternativ (manuell):
 ```bash
 docker stop ros-camera
-```
-
-```bash
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 docker compose up --build
-```
-
-Alternativ:
-```bash
-bash run-wayland.sh
 ```
 
 ## Bedienung

@@ -4,21 +4,8 @@ set -e
 XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
 WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0}
 
-IMAGE_NAME=eyes-face-follow
+if docker ps -a --format '{{.Names}}' | grep -qx 'ros-camera'; then
+  docker stop ros-camera >/dev/null 2>&1 || true
+fi
 
-docker build -t ${IMAGE_NAME} .
-
-docker run --rm -it \
-  --user "$(id -u):$(id -g)" \
-  --group-add video \
-  --network=host \
-  --device=/dev/dri \
-  --device=/dev/dri/renderD128 \
-  -e HOME=/tmp \
-  -e ROS_LOG_DIR=/tmp/ros/log \
-  -e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \
-  -e WAYLAND_DISPLAY=${WAYLAND_DISPLAY} \
-  -e SDL_VIDEODRIVER=wayland \
-  -e PYOPENGL_PLATFORM=egl \
-  -v ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR} \
-  ${IMAGE_NAME}
+XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} WAYLAND_DISPLAY=${WAYLAND_DISPLAY} docker compose up --build
