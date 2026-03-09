@@ -277,6 +277,9 @@ def main():
     face_cy = None
     face_alpha = 0.35
     deadzone = 0.05
+    gaze_scale_x = 0.95
+    gaze_scale_y = 0.55
+    gaze_step = 0.05
     show_debug = False
     last_frame = None
     last_faces = []
@@ -293,6 +296,14 @@ def main():
                     eyes.adjust_convergence(-1)
                 elif event.key == pygame.K_s:
                     eyes.adjust_convergence(1)
+                elif event.key == pygame.K_h:
+                    gaze_scale_x = min(1.5, gaze_scale_x + gaze_step)
+                elif event.key == pygame.K_j:
+                    gaze_scale_x = max(0.1, gaze_scale_x - gaze_step)
+                elif event.key == pygame.K_v:
+                    gaze_scale_y = min(1.2, gaze_scale_y + gaze_step)
+                elif event.key == pygame.K_b:
+                    gaze_scale_y = max(0.1, gaze_scale_y - gaze_step)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 show_debug = not show_debug
 
@@ -320,8 +331,8 @@ def main():
                             gx = 0.0
                         if abs(gy) < deadzone:
                             gy = 0.0
-                        target_gx = max(-1.0, min(1.0, gx)) * 0.7
-                        target_gy = max(-0.6, min(0.6, gy)) * 0.4
+                        target_gx = max(-1.0, min(1.0, gx)) * gaze_scale_x
+                        target_gy = max(-0.6, min(0.6, gy)) * gaze_scale_y
                     else:
                         target_gx *= 0.9
                         target_gy *= 0.9

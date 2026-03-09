@@ -36,18 +36,24 @@ bash run-wayland.sh
 ## Bedienung
 - `A` = Augen weiter auseinander
 - `S` = Augen mehr zusammen
+- `H` = Horizontal staerker
+- `J` = Horizontal schwaecher
+- `V` = Vertikal staerker
+- `B` = Vertikal schwaecher
+- Linksklick = Kamera-Background an/aus
 - `ESC` = Beenden
 
 ## Face-Tracking (Details)
 Der Node `face_follow` macht Folgendes:
 1) Ruft zyklisch den Service `/get_camera_image` auf.
 2) Dekodiert das Base64-Bild (JPEG) nach OpenCV.
-3) Findet Gesichter mit Haar-Cascade (`haarcascade_frontalface_default.xml`).
+3) Optionaler Kamera-Background hinter den Augen (per Klick umschaltbar).
+4) Findet Gesichter mit Haar-Cascade (`haarcascade_frontalface_default.xml`).
 4) Nimmt das groesste Gesicht und berechnet die Blickrichtung relativ zur Bildmitte.
 5) Glaettet die Blickrichtung und rendert die Augen im Vollbild.
 
 ### Bildrate
-Standard: ca. 10 Hz (Service-Aufruf alle 0.1 s). Wenn du mehr oder weniger willst, passe die Abfragezeit im Node an.
+Standard: ca. 30+ Hz (Service-Aufruf alle ~0.03 s). Wenn du mehr oder weniger willst, passe die Abfragezeit im Node an.
 
 ### Blickrichtung
 Die Blickrichtung wird aus der Bildmitte normalisiert:
@@ -59,6 +65,7 @@ Die Haar-Cascade ist schnell, aber empfindlich auf Licht. Falls noetig:
 - Kamera heller/konstanter ausleuchten
 - `minSize` im Code vergroessern/verkleinern
 - `scaleFactor` und `minNeighbors` anpassen
+- Horizontal/Vertikal-Faktor per Tastatur (H/J/V/B)
 
 ### Kein Gesicht gefunden
 Wenn kein Gesicht erkannt wird, bleibt die Blickrichtung stehen und glaettet langsam zur Mitte.
