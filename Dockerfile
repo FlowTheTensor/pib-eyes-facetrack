@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     ros-humble-rosidl-default-generators \
     && rm -rf /var/lib/apt/lists/*
 
+RUN pip install PyOpenGL
+
 WORKDIR /app
 
 COPY ros2_ws /app/ros2_ws
