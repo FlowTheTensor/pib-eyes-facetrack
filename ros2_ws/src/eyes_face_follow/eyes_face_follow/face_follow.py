@@ -17,17 +17,23 @@ from OpenGL.GL import (
     GL_MODELVIEW,
     GL_POSITION,
     GL_PROJECTION,
+    GL_QUAD_STRIP,
     GLfloat,
+    glBegin,
     glClear,
     glClearColor,
+    glDisable,
+    glEnd,
     glEnable,
     glLightfv,
     glLoadIdentity,
     glMaterialfv,
     glMatrixMode,
+    glNormal3f,
     glPopMatrix,
     glPushMatrix,
     glTranslatef,
+    glVertex3f,
 )
 from OpenGL.GLU import gluNewQuadric, gluPerspective, gluSphere
 import rclpy
@@ -67,6 +73,8 @@ class EyesRenderer:
         self.gx = 0.0
         self.gy = 0.0
         self.focus_distance = 3.0
+        self.blink_period = 5.0
+        self.blink_duration = 0.25
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
@@ -92,6 +100,7 @@ class EyesRenderer:
     def update_gaze(self, target_gx, target_gy, alpha=0.2):
         self.gx = (1.0 - alpha) * self.gx + alpha * target_gx
         self.gy = (1.0 - alpha) * self.gy + alpha * target_gy
+        self._update_blink()
 
     def on_draw(self):
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -134,6 +143,19 @@ class EyesRenderer:
         gluSphere(self.quadric, pupil_radius, 20, 20)
         glPopMatrix()
 
+        if self.blink > 0.0:
+            lid_color = (GLfloat * 4)(0.8, 0.8, 0.8, 1.0)
+            glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, lid_color)
+            lid_radius = eyeball_radius * 1.02
+            theta = self.blink * (np.pi / 2.0)
+            glPushMatrix()
+            glTranslatef(0.0, 0.0, eyeball_radius * 0.25)
+            glDisable(GL_DEPTH_TEST)
+            self._draw_sphere_segment(lid_radius, 0.0, theta)
+            self._draw_sphere_segment(lid_radius, np.pi - theta, np.pi)
+            glEnable(GL_DEPTH_TEST)
+            glPopMatrix()
+
         glPopMatrix()
 
     def adjust_convergence(self, direction):
@@ -141,6 +163,36 @@ class EyesRenderer:
             self.focus_distance = max(2.0, self.focus_distance - 1.0)
         elif direction < 0:
             self.focus_distance = min(100.0, self.focus_distance + 1.0)
+
+    def _update_blink(self):
+        t = time.time() - self.start_time
+        phase = t % self.blink_period
+        if phase < self.blink_duration:
+            half = self.blink_duration / 2.0
+            self.blink = max(0.0, 1.0 - abs(phase - half) / half)
+        else:
+            self.blink = 0.0
+
+    def _draw_sphere_segment(self, radius, theta_start, theta_end, slices=36, stacks=12):
+        if theta_end <= theta_start:
+            return
+        for i in range(stacks):
+            t0 = theta_start + (theta_end - theta_start) * (i / stacks)
+            t1 = theta_start + (theta_end - theta_start) * ((i + 1) / stacks)
+            glBegin(GL_QUAD_STRIP)
+            for j in range(slices + 1):
+                phi = 2.0 * np.pi * (j / slices)
+                x0 = np.sin(t0) * np.cos(phi)
+                y0 = np.cos(t0)
+                z0 = np.sin(t0) * np.sin(phi)
+                x1 = np.sin(t1) * np.cos(phi)
+                y1 = np.cos(t1)
+                z1 = np.sin(t1) * np.sin(phi)
+                glNormal3f(x0, y0, z0)
+                glVertex3f(radius * x0, radius * y0, radius * z0)
+                glNormal3f(x1, y1, z1)
+                glVertex3f(radius * x1, radius * y1, radius * z1)
+            glEnd()
 
 
 def decode_image(image_base64):
@@ -151,11 +203,17 @@ def decode_image(image_base64):
 
 def find_face_center(frame, cascade):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+    faces = cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=6,
+        minSize=(80, 80),
+    )
     if len(faces) == 0:
         return None
     x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-    return (x + w / 2.0, y + h / 2.0, frame.shape[1], frame.shape[0])
+    cy = y + h * 0.35
+    return (x + w / 2.0, cy, frame.shape[1], frame.shape[0])
 
 
 def main():
@@ -182,6 +240,10 @@ def main():
     last_request = 0.0
     target_gx = 0.0
     target_gy = 0.0
+    face_cx = None
+    face_cy = None
+    face_alpha = 0.25
+    deadzone = 0.05
 
     running = True
     while running:
@@ -206,10 +268,20 @@ def main():
                     face = find_face_center(frame, cascade)
                     if face:
                         cx, cy, w, h = face
-                        gx = (cx / w - 0.5) * 2.0
-                        gy = -((cy / h - 0.5) * 2.0)
+                        if face_cx is None:
+                            face_cx = cx
+                            face_cy = cy
+                        else:
+                            face_cx = (1.0 - face_alpha) * face_cx + face_alpha * cx
+                            face_cy = (1.0 - face_alpha) * face_cy + face_alpha * cy
+                        gx = -((face_cx / w - 0.5) * 2.0)
+                        gy = -((face_cy / h - 0.5) * 2.0)
+                        if abs(gx) < deadzone:
+                            gx = 0.0
+                        if abs(gy) < deadzone:
+                            gy = 0.0
                         target_gx = max(-1.0, min(1.0, gx)) * 0.7
-                        target_gy = max(-1.0, min(1.0, gy)) * 0.5
+                        target_gy = max(-0.6, min(0.6, gy)) * 0.4
                     else:
                         target_gx *= 0.9
                         target_gy *= 0.9
