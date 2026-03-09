@@ -9,6 +9,7 @@ IMAGE_NAME=eyes-face-follow
 docker build -t ${IMAGE_NAME} .
 
 docker run --rm -it \
+  --user "$(id -u):$(id -g)" \
   --network=host \
   --device=/dev/dri \
   -e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \

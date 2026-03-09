@@ -2,6 +2,7 @@ services:
   eyes-face-follow:
     build: .
     network_mode: host
+    user: "${UID:-1000}:${GID:-1000}"
     devices:
       - /dev/dri
     environment:

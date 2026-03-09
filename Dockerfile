@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install --no-install-recommends -y \
     libegl1-mesa \
     libgl1-mesa-dri \
     libgl1-mesa-glx \
+    libglu1-mesa \
     && rm -rf /var/lib/apt/lists/*
 
 RUN pip install PyOpenGL
