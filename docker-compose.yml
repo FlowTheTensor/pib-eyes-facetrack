@@ -10,5 +10,7 @@ services:
       - WAYLAND_DISPLAY
       - SDL_VIDEODRIVER=wayland
       - PYOPENGL_PLATFORM=egl
+      - HOME=/tmp
+      - ROS_LOG_DIR=/tmp/ros/log
     volumes:
       - ${XDG_RUNTIME_DIR}:${XDG_RUNTIME_DIR}

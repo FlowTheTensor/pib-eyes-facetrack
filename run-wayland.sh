@@ -12,6 +12,8 @@ docker run --rm -it \
   --user "$(id -u):$(id -g)" \
   --network=host \
   --device=/dev/dri \
+  -e HOME=/tmp \
+  -e ROS_LOG_DIR=/tmp/ros/log \
   -e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \
   -e WAYLAND_DISPLAY=${WAYLAND_DISPLAY} \
   -e SDL_VIDEODRIVER=wayland \
