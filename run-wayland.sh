@@ -10,6 +10,7 @@ docker build -t ${IMAGE_NAME} .
 
 docker run --rm -it \
   --user "$(id -u):$(id -g)" \
+  --group-add video \
   --network=host \
   --device=/dev/dri \
   -e HOME=/tmp \

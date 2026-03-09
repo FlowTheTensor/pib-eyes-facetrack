@@ -167,7 +167,12 @@ def main():
         return
 
     eyes = EyesRenderer(fullscreen=True)
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
+    cascade_path = None
+    if hasattr(cv2, "data"):
+        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+    else:
+        cascade_path = "/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml"
+    cascade = cv2.CascadeClassifier(cascade_path)
 
     clock = pygame.time.Clock()
     last_request = 0.0

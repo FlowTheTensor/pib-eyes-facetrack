@@ -3,6 +3,8 @@ services:
     build: .
     network_mode: host
     user: "${UID:-1000}:${GID:-1000}"
+    group_add:
+      - video
     devices:
       - /dev/dri
     environment:
