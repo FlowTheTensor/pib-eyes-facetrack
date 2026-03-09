@@ -50,7 +50,7 @@ class CameraClient(Node):
     def wait_for_service(self, timeout_sec=2.0):
         return self._client.wait_for_service(timeout_sec=timeout_sec)
 
-    def fetch_image_base64(self, timeout_sec=1.0):
+    def fetch_image_base64(self, timeout_sec=0.3):
         request = GetCameraImage.Request()
         future = self._client.call_async(request)
         rclpy.spin_until_future_complete(self, future, timeout_sec=timeout_sec)
@@ -97,7 +97,7 @@ class EyesRenderer:
         glClearColor(1.0, 1.0, 1.0, 1.0)
         self.quadric = gluNewQuadric()
 
-    def update_gaze(self, target_gx, target_gy, alpha=0.2):
+    def update_gaze(self, target_gx, target_gy, alpha=0.35):
         self.gx = (1.0 - alpha) * self.gx + alpha * target_gx
         self.gy = (1.0 - alpha) * self.gy + alpha * target_gy
         self._update_blink()
@@ -210,10 +210,10 @@ def find_face_center(frame, cascade):
         minSize=(80, 80),
     )
     if len(faces) == 0:
-        return None
+        return None, []
     x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
     cy = y + h * 0.35
-    return (x + w / 2.0, cy, frame.shape[1], frame.shape[0])
+    return (x + w / 2.0, cy, frame.shape[1], frame.shape[0]), faces
 
 
 def main():
@@ -242,8 +242,11 @@ def main():
     target_gy = 0.0
     face_cx = None
     face_cy = None
-    face_alpha = 0.25
+    face_alpha = 0.35
     deadzone = 0.05
+    show_debug = False
+    last_frame = None
+    last_faces = []
 
     running = True
     while running:
@@ -257,15 +260,21 @@ def main():
                     eyes.adjust_convergence(-1)
                 elif event.key == pygame.K_s:
                     eyes.adjust_convergence(1)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                show_debug = not show_debug
+                if not show_debug:
+                    cv2.destroyAllWindows()
 
         now = time.time()
-        if now - last_request > 0.1:
+        if now - last_request > 0.03:
             last_request = now
             image_base64 = node.fetch_image_base64(timeout_sec=1.0)
             if image_base64:
                 frame = decode_image(image_base64)
                 if frame is not None:
-                    face = find_face_center(frame, cascade)
+                    last_frame = frame
+                    face, faces = find_face_center(frame, cascade)
+                    last_faces = faces
                     if face:
                         cx, cy, w, h = face
                         if face_cx is None:
@@ -288,6 +297,12 @@ def main():
 
         eyes.update_gaze(target_gx, target_gy)
         eyes.on_draw()
+        if show_debug and last_frame is not None:
+            debug = last_frame.copy()
+            for (x, y, w, h) in last_faces:
+                cv2.rectangle(debug, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.imshow("Face Tracking", debug)
+            cv2.waitKey(1)
         clock.tick(eyes.fps)
 
     pygame.quit()
