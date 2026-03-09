@@ -23,6 +23,11 @@ ros2 node info /camera_node
 ```
 
 ## Start (Wayland, Vollbild)
+Falls bereits ein alter `ros-camera` Container laeuft, stoppe ihn zuerst:
+```bash
+docker stop ros-camera
+```
+
 ```bash
 XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-0 docker compose up --build
 ```
