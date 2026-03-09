@@ -67,6 +67,9 @@ class CameraClient(Node):
     def wait_for_service(self, timeout_sec=2.0):
         return self._client.wait_for_service(timeout_sec=timeout_sec)
 
+    def service_is_ready(self):
+        return self._client.service_is_ready()
+
     def fetch_image_base64(self, timeout_sec=0.3):
         request = GetCameraImage.Request()
         future = self._client.call_async(request)
@@ -308,10 +311,6 @@ def decode_image(image_base64):
 def main():
     rclpy.init()
     node = CameraClient("/get_camera_image")
-    if not node.wait_for_service(timeout_sec=5.0):
-        node.get_logger().error("camera service not available")
-        rclpy.shutdown()
-        return
 
     eyes = EyesRenderer(fullscreen=True)
 
@@ -326,6 +325,7 @@ def main():
     show_debug = False
     last_frame = None
     use_face_topic = os.getenv("USE_FACE_TOPIC", "1") == "1"
+    last_service_warn = 0.0
 
     running = True
     while running:
@@ -365,11 +365,16 @@ def main():
 
         if now - last_request > 0.03 and show_debug:
             last_request = now
-            image_base64 = node.fetch_image_base64(timeout_sec=1.0)
-            if image_base64:
-                frame = decode_image(image_base64)
-                if frame is not None:
-                    last_frame = frame
+            if not node.service_is_ready():
+                if now - last_service_warn > 5.0:
+                    node.get_logger().warn("camera service not available")
+                    last_service_warn = now
+            else:
+                image_base64 = node.fetch_image_base64(timeout_sec=1.0)
+                if image_base64:
+                    frame = decode_image(image_base64)
+                    if frame is not None:
+                        last_frame = frame
 
         eyes.update_gaze(target_gx, target_gy)
         eyes.set_background(last_frame, enabled=show_debug)
