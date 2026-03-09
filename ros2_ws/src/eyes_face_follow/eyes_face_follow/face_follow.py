@@ -18,11 +18,14 @@ from OpenGL.GL import (
     GL_POSITION,
     GL_PROJECTION,
     GL_QUAD_STRIP,
+    GL_RGB,
+    GL_UNSIGNED_BYTE,
     GLfloat,
     glBegin,
     glClear,
     glClearColor,
     glDisable,
+    glDrawPixels,
     glEnd,
     glEnable,
     glLightfv,
@@ -33,6 +36,7 @@ from OpenGL.GL import (
     glPopMatrix,
     glPushMatrix,
     glTranslatef,
+    glWindowPos2d,
     glVertex3f,
 )
 from OpenGL.GLU import gluNewQuadric, gluPerspective, gluSphere
@@ -75,6 +79,8 @@ class EyesRenderer:
         self.focus_distance = 3.0
         self.blink_period = 5.0
         self.blink_duration = 0.25
+        self.background_enabled = False
+        self.background_frame = None
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
@@ -110,6 +116,8 @@ class EyesRenderer:
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
         glTranslatef(0.0, 0.0, -6.0)
+        if self.background_enabled and self.background_frame is not None:
+            self._draw_background()
         left_gx = self.gx + self._convergence_offset(-1.7)
         right_gx = self.gx + self._convergence_offset(1.7)
         self._draw_eye(-1.7, 0.7, left_gx, self.gy)
@@ -194,6 +202,30 @@ class EyesRenderer:
                 glVertex3f(radius * x1, radius * y1, radius * z1)
             glEnd()
 
+    def set_background(self, frame, faces=None, enabled=False):
+        self.background_enabled = enabled
+        if not enabled or frame is None:
+            self.background_frame = None
+            return
+        bg = frame
+        if faces:
+            bg = frame.copy()
+            for (x, y, w, h) in faces:
+                cv2.rectangle(bg, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        bg = cv2.resize(bg, (self.width, self.height))
+        bg = cv2.cvtColor(bg, cv2.COLOR_BGR2RGB)
+        bg = np.flipud(bg)
+        self.background_frame = bg
+
+    def _draw_background(self):
+        data = self.background_frame.tobytes()
+        glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+        glWindowPos2d(0, 0)
+        glDrawPixels(self.width, self.height, GL_RGB, GL_UNSIGNED_BYTE, data)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
+
 
 def decode_image(image_base64):
     raw = base64.b64decode(image_base64)
@@ -262,8 +294,6 @@ def main():
                     eyes.adjust_convergence(1)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 show_debug = not show_debug
-                if not show_debug:
-                    cv2.destroyAllWindows()
 
         now = time.time()
         if now - last_request > 0.03:
@@ -296,13 +326,8 @@ def main():
                         target_gy *= 0.9
 
         eyes.update_gaze(target_gx, target_gy)
+        eyes.set_background(last_frame, last_faces, enabled=show_debug)
         eyes.on_draw()
-        if show_debug and last_frame is not None:
-            debug = last_frame.copy()
-            for (x, y, w, h) in last_faces:
-                cv2.rectangle(debug, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.imshow("Face Tracking", debug)
-            cv2.waitKey(1)
         clock.tick(eyes.fps)
 
     pygame.quit()
