@@ -87,6 +87,7 @@ class EyesRenderer:
         )
         self.text_font_size = 60
         self.text_margin = 40
+        self.text_enabled = True
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
@@ -130,7 +131,8 @@ class EyesRenderer:
         right_gx = self.gx + self._convergence_offset(1.7)
         self._draw_eye(-1.7, 0.7, left_gx, self.gy)
         self._draw_eye(1.7, 0.7, right_gx, self.gy)
-        self._draw_static_text()
+        if self.text_enabled:
+            self._draw_static_text()
         pygame.display.flip()
 
     def _convergence_offset(self, eye_x):
@@ -353,6 +355,8 @@ def main():
                     gaze_scale_y = min(1.2, gaze_scale_y + gaze_step)
                 elif event.key == pygame.K_b:
                     gaze_scale_y = max(0.1, gaze_scale_y - gaze_step)
+                elif event.key == pygame.K_t:
+                    eyes.text_enabled = not eyes.text_enabled
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 show_debug = not show_debug
 
