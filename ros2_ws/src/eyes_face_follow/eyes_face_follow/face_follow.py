@@ -81,11 +81,18 @@ class EyesRenderer:
         self.blink_duration = 0.25
         self.background_enabled = False
         self.background_frame = None
+        self.scroll_text = (
+            "Besuchen Sie unsere                 Technikerschule fuer Elektrotechnik Schwerpunkt "
+            "Kuenstliche Intelligenz im Raum 235 und 238"
+        )
+        self.text_font_size = 60
+        self.text_margin = 40
 
         os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
         os.environ.setdefault("SDL_VIDEODRIVER", "wayland")
 
         pygame.init()
+        pygame.font.init()
         display_flags = DOUBLEBUF | OPENGL
         if self.fullscreen:
             display_info = pygame.display.Info()
@@ -102,6 +109,7 @@ class EyesRenderer:
         glLightfv(GL_LIGHT0, GL_POSITION, light_pos)
         glClearColor(1.0, 1.0, 1.0, 1.0)
         self.quadric = gluNewQuadric()
+        self.text_surface = self._render_text_surface()
 
     def update_gaze(self, target_gx, target_gy, alpha=0.35):
         self.gx = (1.0 - alpha) * self.gx + alpha * target_gx
@@ -122,10 +130,51 @@ class EyesRenderer:
         right_gx = self.gx + self._convergence_offset(1.7)
         self._draw_eye(-1.7, 0.7, left_gx, self.gy)
         self._draw_eye(1.7, 0.7, right_gx, self.gy)
+        self._draw_static_text()
         pygame.display.flip()
 
     def _convergence_offset(self, eye_x):
         return max(-1.0, min(1.0, -eye_x / self.focus_distance))
+
+    def _render_text_surface(self):
+        font = pygame.font.Font(None, self.text_font_size)
+        max_width = max(100, self.width - (self.text_margin * 2))
+        words = self.scroll_text.split()
+        lines = []
+        current = ""
+        for word in words:
+            candidate = f"{current} {word}".strip()
+            if font.size(candidate)[0] <= max_width:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+
+        line_height = font.get_linesize()
+        text_h = line_height * len(lines)
+        surface = pygame.Surface((max_width, text_h))
+        surface.fill((255, 255, 255))
+        for i, line in enumerate(lines):
+            text_line = font.render(line, True, (0, 0, 0))
+            line_w = text_line.get_width()
+            x = int((max_width - line_w) / 2)
+            surface.blit(text_line, (x, i * line_height))
+        return surface
+
+    def _draw_static_text(self):
+        text_w, text_h = self.text_surface.get_size()
+        x = int((self.width - text_w) / 2)
+        y = 20
+        text_data = pygame.image.tostring(self.text_surface, "RGB", True)
+        glDisable(GL_LIGHTING)
+        glDisable(GL_DEPTH_TEST)
+        glWindowPos2d(x, y)
+        glDrawPixels(text_w, text_h, GL_RGB, GL_UNSIGNED_BYTE, text_data)
+        glEnable(GL_DEPTH_TEST)
+        glEnable(GL_LIGHTING)
 
     def _draw_eye(self, cx, cy, gx, gy):
         scale = 1.2
